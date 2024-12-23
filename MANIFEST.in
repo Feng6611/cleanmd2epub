@@ -1,0 +1,12 @@
+include LICENSE
+include README.md
+include pyproject.toml
+include MANIFEST.in
+
+recursive-include cleanmd *.py
+recursive-include cleanmd *.yaml
+recursive-include cleanmd *.json
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[cod]
+recursive-exclude * *.so 

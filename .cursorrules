@@ -1,0 +1,224 @@
+# 基础信息
+- Gemini API: https://ai.google.dev/gemini-api/docs
+- Python 3.10+
+- MacOS
+- 使用 Gemini 清洗 MD 文件，提高可读性
+
+# 项目架构目录
+```
+cleanmd2epub/
+├── src/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── document_parser.py     # 文档解析和分块
+│   │   ├── text_processor.py      # Gemini API 文本处理
+│   │   ├── epub_generator.py      # EPUB 文件生成
+│   │   └── config.py             # 配置管理 ✓
+│   ├── interfaces/
+│   │   ├── __init__.py
+│   │   ├── document_parser.py     # 文档解析接口
+│   │   ├── text_processor.py      # 文本处理接口
+│   │   └── output_generator.py    # 输出生成接口
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── logger.py             # 日志工具 ✓
+│   │   ├── file_utils.py         # 文件操作工具 ✓
+│   │   ├── douban_crawler.py     # 豆瓣元数据爬虫 ✓
+│   │   └── cache.py             # 缓存管理 ✓
+│   └── cli/
+│       ├── __init__.py
+│       └── main.py              # 命令行入口
+├── tests/
+│   ├── __init__.py
+│   ├── test_document_parser.py
+│   ├── test_text_processor.py
+│   └── test_epub_generator.py
+├── templates/
+│   ├── epub/
+│   │   ├── cover.html
+│   │   ├── title.html
+│   │   └── chapter.html
+│   └── styles/
+│       └── epub.css
+├── docs/                       # 项目文档
+│   ├── api/                    # API 文档
+│   │   └── index.md
+│   └── user/                   # 用户文档
+│       ├── getting_started.md
+│       └── advanced_usage.md
+├── cache/                      # 缓存目录
+│   ├── api_responses/          # AI API 响应缓存
+│   └── metadata/              # 豆瓣元数据缓存
+├── output/                     # 输出目录
+│   └── .gitkeep
+├── .env.example                # 环境变量示例 ✓
+├── .env                        # 环境变量配置 ✓
+├── requirements.txt            # 依赖管理 ✓
+├── setup.py                    # 包安装配置
+└── pytest.ini                  # 测试配置 ✓
+```
+
+# 架构设计
+
+## 核心接口
+1. IDocumentParser ✓
+   - parse_document(file_path: str) -> Document ✓
+   - extract_metadata() -> Metadata ✓
+   - split_content() -> List[ContentBlock] ✓
+
+2. ITextProcessor ✓
+   - process_block(block: ContentBlock) -> ProcessedBlock ✓
+   - validate_result(block: ProcessedBlock) -> bool ✓
+   - merge_blocks(blocks: List[ProcessedBlock]) -> Document ✓
+
+3. IOutputGenerator
+   - generate(document: Document, metadata: Metadata) -> bytes
+   - validate_output(output: bytes) -> bool
+
+## 核心模块
+1. Document Parser (document_parser.py) ✓
+   - 实现 IDocumentParser 接口 ✓
+   - 文档解析和分块 ✓
+   - 识别文档结构（前置部分、正文）✓
+   - 提取元数据（ISBN、书名等）✓
+   - 依赖: Config Manager, Utils ✓
+
+2. Text Processor (text_processor.py) ✓
+   - 实现 ITextProcessor 接口 ✓
+   - Gemini API 调用 ✓
+   - 异步处理和重试机制 ✓
+   - 上下文管理 ✓
+   - 依赖: Config Manager, Utils ✓
+
+3. EPUB Generator (epub_generator.py)
+   - 实现 IOutputGenerator 接口
+   - 模板引擎
+   - 样式管理
+   - 资源管理
+   - 依赖: Config Manager, Utils
+
+4. Config Manager (config.py) ✓
+   - 配置管理 ✓
+   - 环境变量处理 ✓
+   - 默认参数设置 ✓
+   - 依赖: Utils ✓
+
+5. CLI Interface (cli.py)
+   - 命令行接口
+   - 参数解析
+   - 进度显示
+   - 依赖: 所有核心模块
+
+6. Utils (utils.py) ✓
+   - 通用工具函数 ✓
+   - 日志处理 ✓
+   - 文件操作 ✓
+   - 无依赖 ✓
+
+## 错误处理策略
+1. 应用层错误 ✓
+   - 用户输入验证 ✓
+   - 配置错误 ✓
+   - 权限错误 ✓
+
+2. 业务层错误 ✓
+   - 文档解析错误 ✓
+   - AI 处理错误 ✓
+   - 元数据获取错误 ✓
+
+3. 基础设施错误 ✓
+   - 网络错误 ✓
+   - IO 错误 ✓
+   - 系统资源错误 ✓
+
+## 性能优化策略
+1. 内存管理 ✓
+   - 流式处理大文件 ✓
+   - 分块处理 ✓
+   - 垃圾回收优化 ✓
+
+2. 并发处理 ✓
+   - 异步 IO ✓
+   - 多线程处理 ✓
+   - 任务队列 ✓
+
+3. 缓存策略 ✓
+   - AI 响应缓存 ✓
+   - 元数据缓存 ✓
+   - 文件缓存 ✓
+
+## 数据流
+1. 输入 MD 文件 → Document Parser ✓
+2. Document Parser → Text Processor ✓
+3. Text Processor → EPUB Generator
+4. EPUB Generator → 输出 EPUB 文件
+
+# 功能实现顺序
+
+## Phase 1: 基础框架搭建 ✓
+1. 项目结构初始化 ✓
+   - 创建核心接口 ✓
+   - 创建核心模块文件 ✓
+   - 设置依赖管理 ✓
+   - 配置开发环境 ✓
+
+2. 配置系统实现 ✓
+   - 实现配置管理 ✓
+   - 环境变量处理 ✓
+   - 日志系统 ✓
+   - 错误处理基础设施 ✓
+
+## Phase 2: 文档解析 ✓
+1. Document Parser 实现 ✓
+   - 实现 IDocumentParser 接口 ✓
+   - 文档加载和验证 ✓
+   - 前置部分识别 ✓
+   - 正文分块逻辑 ✓
+
+2. 元数据提取 ✓
+   - ISBN 识别 ✓
+   - 豆瓣元数据获取 ✓
+   - 元数据验证 ✓
+
+## Phase 3: 文本处理 ✓
+1. Gemini API 集成 ✓
+   - API 客户端封装 ✓
+   - 异步处理实现 ✓
+   - 重试机制 ✓
+
+2. Text Processor 实现 ✓
+   - 实现 ITextProcessor 接口 ✓
+   - 前置部分处理 ✓
+   - 正文块处理 ✓
+   - 结果验证 ✓
+
+## Phase 4: EPUB 生成 [进行中]
+1. EPUB Generator 实现
+   - 模板系统
+   - 样式管理
+   - 元数据整合
+
+2. 输出验证
+   - EPUB 格式验证
+   - 内容完整性检查
+   - 样式一致性检查
+
+## Phase 5: CLI 和优化
+1. 命令行界面
+   - 参数解析
+   - 进度显示
+   - 错误处理
+   - 用户交互优化
+
+2. 性能优化 ✓
+   - 并发处理实现 ✓
+   - 缓存机制 ✓
+   - 内存管理优化 ✓
+   - 性能监控 ✓
+
+3. 测试和文档 [进行中]
+   - 单元测试 ✓
+   - 集成测试
+   - 性能测试
+   - API 文档
+   - 用户文档

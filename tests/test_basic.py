@@ -30,7 +30,7 @@ async def test_basic_workflow():
     assert len(processed_block.content) > 0
 
     # 验证结果有效性
-    is_valid = await processor.validate_result(processed_block)
+    is_valid = processor.validate_result(processed_block)
     assert is_valid
 
 

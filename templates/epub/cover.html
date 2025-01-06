@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">
+<head>
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="../styles/epub.css"/>
+</head>
+<body>
+    <div class="cover">
+        {% if cover_image %}
+        <img src="{{cover_image}}" alt="{{title}}" class="cover-image"/>
+        {% else %}
+        <div class="cover-title">
+            <h1>{{title}}</h1>
+            <div class="author">{{author}}</div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html> 

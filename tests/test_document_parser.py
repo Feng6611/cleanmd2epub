@@ -392,3 +392,180 @@ async def test_real_cross_cultural_structure(real_cross_cultural_content, config
     finally:
         # 清理临时文件
         os.unlink(file_path)
+
+
+@pytest.mark.parametrize(
+    "content,expected_frontmatter,expected_mainmatter",
+    [
+        # 总序相关测试
+        ("作者简介\n\n总序\n这是正文", "作者简介", "总序\n这是正文"),
+        ("作者简介\n\n总序言\n这是正文", "作者简介", "总序言\n这是正文"),
+        ("作者简介\n\n丛书总序\n这是正文", "作者简介", "丛书总序\n这是正文"),
+        ("作者简介\n\n总序一\n这是正文", "作者简介", "总序一\n这是正文"),
+        ("作者简介\n\n第一总序\n这是正文", "作者简介", "第一总序\n这是正文"),
+        # 目录相关测试
+        ("作者简介\n\n目录\n第一章\n第二章", "作者简介", "目录\n第一章\n第二章"),
+        ("作者简介\n\n目次\n第一章\n第二章", "作者简介", "目次\n第一章\n第二章"),
+        (
+            "作者简介\n\nContents\n第一章\n第二章",
+            "作者简介",
+            "Contents\n第一章\n第二章",
+        ),
+        (
+            "作者简介\n\n目录 / Table of Contents\n第一章\n第二章",
+            "作者简介",
+            "目录 / Table of Contents\n第一章\n第二章",
+        ),
+        # 正文相关测试
+        ("作者简介\n\n正文\n这是正文内容", "作者简介", "正文\n这是正文内容"),
+        (
+            "作者简介\n\n正文开始：\n这是正文内容",
+            "作者简介",
+            "正文开始：\n这是正文内容",
+        ),
+        (
+            "作者简介\n\n正文（一）\n这是正文内容",
+            "作者简介",
+            "正文（一）\n这是正文内容",
+        ),
+        ("作者简介\n\n正文(1)\n这是正文内容", "作者简介", "正文(1)\n这是正文内容"),
+        (
+            "作者简介\n\n正文 / Main Text\n这是正文内容",
+            "作者简介",
+            "正文 / Main Text\n这是正文内容",
+        ),
+        # 双语标记测试
+        (
+            "作者简介\n\n序言 / Preface\n这是序言内容",
+            "作者简介",
+            "序言 / Preface\n这是序言内容",
+        ),
+        (
+            "作者简介\n\n前言 / Foreword\n这是前言内容",
+            "作者简介",
+            "前言 / Foreword\n这是前言内容",
+        ),
+        (
+            "作者简介\n\n导言 / Introduction\n这是导言内容",
+            "作者简介",
+            "导言 / Introduction\n这是导言内容",
+        ),
+    ],
+)
+def test_split_document_with_new_markers(
+    self, content: str, expected_frontmatter: str, expected_mainmatter: str
+):
+    """测试新增的文档分隔标记"""
+    parser = DocumentParser(content)
+    parser.parse()
+    assert parser.frontmatter == expected_frontmatter
+    assert parser.mainmatter == expected_mainmatter
+
+
+@pytest.mark.asyncio
+async def test_frontmatter_with_author_info(config):
+    """测试包含作者简介的前置内容"""
+    content = """# 同工异曲跨文化阅读的启示  
+
+UNEXPECTED AFFINITIES: READING ACROSS CULTURES  
+
+张隆溪著  
+
+# 作者简介  
+
+张隆溪，生于四川成都，北京大学西语系硕士，美国哈佛大学比较文学博士。
+
+# 张隆溪作品系列  
+
+道与逻各斯：东西方文学阐释学
+20世纪西方文论述评（增订版）
+讽寓解释：论东西方经典的阅读与阐释
+
+# 总序  
+
+在香港经李欧梵教授介绍，我结识了苏州大学的季进先生..."""
+
+    file_path = await create_temp_file(content)
+
+    try:
+        parser = DocumentParser(config)
+        doc = await parser.parse_document(file_path)
+
+        # 验证前置内容包含作者简介和作品系列
+        assert "作者简介" in doc.frontmatter
+        assert "张隆溪作品系列" in doc.frontmatter
+        assert "总序" not in doc.frontmatter
+
+        # 验证主体内容以总序开始
+        assert doc.mainmatter.strip().startswith("# 总序")
+    finally:
+        os.unlink(file_path)
+
+
+@pytest.mark.asyncio
+async def test_frontmatter_with_dedication(config):
+    """测试包含献词的前置内容"""
+    content = """# 同工异曲跨文化阅读的启示  
+
+张隆溪著  
+
+# 作者简介  
+张隆溪，著名学者。
+
+# 谨以此小书献给  
+亦师亦友的钱鐘书先生（1910一1998）  
+
+# 总序  
+这是总序的内容。"""
+
+    file_path = await create_temp_file(content)
+
+    try:
+        parser = DocumentParser(config)
+        doc = await parser.parse_document(file_path)
+
+        # 验证前置内容包含作者简介和献词
+        assert "作者简介" in doc.frontmatter
+        assert "谨以此小书献给" in doc.frontmatter
+        assert "总序" not in doc.frontmatter
+
+        # 验证主体内容以总序开始
+        assert doc.mainmatter.strip().startswith("# 总序")
+    finally:
+        os.unlink(file_path)
+
+
+@pytest.mark.asyncio
+async def test_frontmatter_with_bilingual_title(config):
+    """测试包含双语标题的前置内容"""
+    content = """# 同工异曲跨文化阅读的启示  
+
+UNEXPECTED AFFINITIES: READING ACROSS CULTURES  
+
+张隆溪著  
+
+# Author's Introduction
+The author Zhang Longxi is a professor...
+
+# 中英对照说明
+本书分为中英两个部分...
+
+# 总序  
+这是总序的内容。"""
+
+    file_path = await create_temp_file(content)
+
+    try:
+        parser = DocumentParser(config)
+        doc = await parser.parse_document(file_path)
+
+        # 验证前置内容包含双语标题和说明
+        assert "UNEXPECTED AFFINITIES" in doc.frontmatter
+        assert "Author's Introduction" in doc.frontmatter
+        assert "中英对照说明" in doc.frontmatter
+        assert "总序" not in doc.frontmatter
+
+        # 验证主体内容以总序开始
+        assert doc.mainmatter.strip().startswith("# 总序")
+    finally:
+        os.unlink(file_path)

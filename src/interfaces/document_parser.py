@@ -23,6 +23,25 @@ class ContentBlock:
     level: int  # 标题层级，0表示正文
     position: int  # 在文档中的位置
 
+    def to_dict(self) -> dict:
+        """转换为字典，用于 JSON 序列化"""
+        return {
+            "content": self.content,
+            "block_type": self.block_type,
+            "level": self.level,
+            "position": self.position,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ContentBlock":
+        """从字典创建对象"""
+        return cls(
+            content=data["content"],
+            block_type=data["block_type"],
+            level=data["level"],
+            position=data["position"],
+        )
+
 
 @dataclass
 class Document:
@@ -49,11 +68,14 @@ class IDocumentParser(ABC):
         pass
 
     @abstractmethod
-    async def extract_metadata(self) -> Metadata:
-        """提取文档元数据"""
-        pass
+    def split_content(self, frontmatter: str, main_content: str) -> List[ContentBlock]:
+        """分割文档内容
 
-    @abstractmethod
-    async def split_content(self) -> List[ContentBlock]:
-        """分割文档内容"""
+        Args:
+            frontmatter: 前置内容
+            main_content: 主体内容
+
+        Returns:
+            内容块列表
+        """
         pass

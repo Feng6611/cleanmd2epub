@@ -26,7 +26,8 @@ class DoubanCrawler:
             config: 配置对象
         """
         self.config = config
-        self.cache = Cache(Path(config.cache_dir) / "metadata")
+        # 初始化缓存
+        self.cache = Cache(config)
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -68,9 +69,10 @@ class DoubanCrawler:
         """
         # 检查缓存
         cache_key = f"metadata_{isbn}"
-        if cached := self.cache.get(cache_key):
+        cached_data = self.cache.get(cache_key)
+        if cached_data and isinstance(cached_data, dict):
             logger.debug(f"Using cached metadata for ISBN: {isbn}")
-            return cached
+            return cached_data
 
         # 直接访问 ISBN 对应的页面
         url = f"https://book.douban.com/isbn/{isbn}/"
@@ -209,3 +211,97 @@ class DoubanCrawler:
             if match := re.search(pattern, content):
                 return match.group(1).strip()
         return ""
+
+    async def get_book_metadata_by_title(self, title: str) -> Optional[Dict[str, Any]]:
+        """通过书名获取图书元数据
+
+        Args:
+            title: 图书标题
+
+        Returns:
+            图书元数据字典，如果获取失败则返回 None
+        """
+        # 检查缓存
+        cache_key = f"metadata_title_{title}"
+        if cached := self.cache.get(cache_key):
+            logger.debug(f"Using cached metadata for title: {title}")
+            return cached
+
+        # 构建搜索 URL
+        search_url = (
+            f"https://book.douban.com/subject_search?search_text={title}&cat=1001"
+        )
+        logger.debug(f"Searching book by title: {title}")
+
+        # 获取搜索结果页面
+        content = await self._fetch_url(search_url)
+        if not content:
+            logger.warning(f"Failed to fetch search results for title: {title}")
+            return None
+
+        try:
+            # 从搜索结果中提取第一个匹配的图书 ID
+            pattern = (
+                r'href="https://book\.douban\.com/subject/(\d+)/"[^>]*title="([^"]+)"'
+            )
+            matches = re.finditer(pattern, content)
+
+            # 找到最匹配的结果
+            best_match = None
+            best_ratio = 0
+
+            for match in matches:
+                book_id = match.group(1)
+                book_title = match.group(2)
+                # 计算标题相似度
+                ratio = self._similarity_ratio(title, book_title)
+                if ratio > best_ratio and ratio > 0.6:  # 设置相似度阈值
+                    best_ratio = ratio
+                    best_match = book_id
+
+            if best_match:
+                # 获取图书详情页
+                book_url = f"https://book.douban.com/subject/{best_match}/"
+                logger.debug(f"Found matching book: {book_url}")
+
+                content = await self._fetch_url(book_url)
+                if not content:
+                    return None
+
+                # 解析元数据
+                metadata = {
+                    "douban_id": best_match,
+                    "title": self._extract_title(content),
+                    "author": self._extract_author(content),
+                    "publisher": self._extract_publisher(content),
+                    "publish_date": self._extract_publish_date(content),
+                    "rating": self._extract_rating(content),
+                    "cover_url": self._extract_cover_url(content),
+                    "description": self._extract_description(content),
+                }
+
+                # 缓存结果
+                self.cache.set(cache_key, metadata)
+                logger.debug(f"Successfully fetched metadata for title: {title}")
+                return metadata
+
+            logger.warning(f"No matching book found for title: {title}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error searching book by title {title}: {e}")
+            return None
+
+    def _similarity_ratio(self, s1: str, s2: str) -> float:
+        """计算两个字符串的相似度"""
+        from difflib import SequenceMatcher
+
+        # 移除空白字符和标点符号
+        import re
+
+        def clean_string(s: str) -> str:
+            return re.sub(r"[\s\p{P}]+", "", s)
+
+        s1 = clean_string(s1)
+        s2 = clean_string(s2)
+        return SequenceMatcher(None, s1, s2).ratio()

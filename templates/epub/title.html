@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="zh-CN">
+<head>
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="../styles/epub.css"/>
+</head>
+<body>
+    <div class="title-page">
+        <h1 class="book-title">{{title}}</h1>
+        <div class="author">{{author}}</div>
+        {% if publisher %}
+        <div class="publisher">{{publisher}}</div>
+        {% endif %}
+        {% if isbn %}
+        <div class="isbn">ISBN: {{isbn}}</div>
+        {% endif %}
+    </div>
+</body>
+</html> 

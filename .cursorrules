@@ -1,5 +1,6 @@
 # 基础信息
 - Gemini API: https://ai.google.dev/gemini-api/docs
+- gemini-2.0-flash-exp	
 - Python 3.10+
 - MacOS
 - 使用 Gemini 清洗 MD 文件，提高可读性
